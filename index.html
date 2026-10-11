@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>流星雨许愿</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #toast {
+            position: absolute; top: 40px; left: 50%; transform: translate(-50%, -20px);
+            width: 85%; max-width: 350px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 15px; display: flex; align-items: center; justify-content: space-between;
+            color: #fff; z-index: 10; opacity: 0; visibility: hidden; transition: all 0.4s ease;
+        }
+        #toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+        .toast-left { display: flex; align-items: center; gap: 10px; }
+        .star-icon { font-size: 24px; }
+        .toast-text h3 { font-size: 15px; font-weight: normal; margin-bottom: 3px; }
+        .toast-text p { font-size: 11px; color: rgba(255,255,255,0.6); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .toast-time { font-size: 12px; color: rgba(255,255,255,0.5); }
+        .bg-text { position: absolute; top: 30%; right: 15%; font-size: 16px; color: rgba(255,255,255,0.8); z-index: 2; animation: float 4s infinite alternate; }
+        @keyframes float { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+        .bottom-bar {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 380px; display: flex; align-items: center; justify-content: space-between;
+            background: rgba(40,40,40,0.9); border-radius: 30px; padding: 6px; z-index: 10; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .wish-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 14px; padding: 0 15px; height: 40px; }
+        .wish-input::placeholder { color: rgba(255,255,255,0.7); }
+        .send-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .send-btn svg { width: 18px; height: 18px; fill: #fff; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="toast">
+        <div class="toast-left">
+            <div class="star-icon">✦</div>
+            <div class="toast-text">
+                <h3 id="toastTitle">许愿成功</h3>
+                <p id="toastDesc">您将得偿所愿</p>
+            </div>
+        </div>
+        <div class="toast-time">now</div>
+    </div>
+    <div class="bg-text">万事顺遂</div>
+    <div class="bottom-bar">
+        <input type="text" id="wishInput" class="wish-input" placeholder="对着流星许下愿望✨" autocomplete="off">
+        <div class="send-btn" id="sendBtn">
+            <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z"/></svg>
+        </div>
+    </div>
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var width = window.innerWidth || document.documentElement.clientWidth || 360;
+        var height = window.innerHeight || document.documentElement.clientHeight || 640;
+        canvas.width = width;
+        canvas.height = height;
+
+        var stars = [], meteors = [];
+        for (var i = 0; i < 100; i++) {
+            stars.push({ x: Math.random()*width, y: Math.random()*height, r: Math.random()*1.5, a: Math.random(), s: Math.random()*0.02+0.01 });
+        }
+        for (var i = 0; i < 15; i++) {
+            meteors.push({ x: Math.random()*width*2 - width, y: Math.random()*height - height, len: Math.random()*150+100, speed: Math.random()*8+6, size: Math.random()*1.5+1, wait: Math.random()*100, alpha: Math.random()*0.5+0.5 });
+        }
+
+        setInterval(function() {
+            ctx.clearRect(0, 0, width, height);
+            for (var i = 0; i < stars.length; i++) {
+                var s = stars[i]; s.a += s.s;
+                if (s.a > 1 || s.a < 0) s.s = -s.s;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(255,255,255,' + Math.abs(s.a) + ')'; ctx.fill();
+            }
+            for (var i = 0; i < meteors.length; i++) {
+                var m = meteors[i];
+                if (m.wait > 0) { m.wait--; continue; }
+                // 方向反过来：x变小（向左），y变大（向下）
+                m.x -= Math.cos(Math.PI/4) * m.speed; 
+                m.y += Math.sin(Math.PI/4) * m.speed;
+                
+                if (m.x < -m.len || m.y > height + m.len) {
+                    m.x = Math.random()*width*2 + width; // 从右侧开始
+                    m.y = Math.random()*height - height; 
+                    m.wait = Math.random()*100;
+                }
+                ctx.beginPath();
+                ctx.moveTo(m.x, m.y);
+                // 尾巴方向反过来：向右上画
+                ctx.lineTo(m.x + Math.cos(Math.PI/4)*m.len, m.y - Math.sin(Math.PI/4)*m.len);
+                ctx.strokeStyle = 'rgba(255,255,255,' + m.alpha + ')';
+                ctx.lineWidth = m.size; ctx.lineCap = 'round'; ctx.stroke();
+            }
+        }, 30);
+
+        var sendBtn = document.getElementById('sendBtn');
+        var toast = document.getElementById('toast');
+        var wishInput = document.getElementById('wishInput');
+        var toastTitle = document.getElementById('toastTitle');
+        var toastDesc = document.getElementById('toastDesc');
+
+        sendBtn.onclick = function() {
+            var wish = wishInput.value.trim();
+            if (wish) {
+                toastTitle.innerText = '愿望已送达';
+                toastDesc.innerText = wish;
+                wishInput.value = ''; 
+            } else {
+                toastTitle.innerText = '许愿成功';
+                toastDesc.innerText = '您将得偿所愿';
+            }
+            toast.className = 'show';
+            setTimeout(function(){ toast.className = ''; }, 3000);
+            wishInput.blur();
+        };
+
+        wishInput.onkeydown = function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                sendBtn.click();
+            }
+        };
+    </script>
+</body>
+</html>
